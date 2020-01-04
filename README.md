@@ -1,43 +1,41 @@
 # [Traccar](https://www.traccar.org)
-[![Build Status](https://travis-ci.org/tananaev/traccar.svg?branch=master)](https://travis-ci.org/tananaev/traccar)
-
-## Contacts
-
-Author - Anton Tananaev ([anton.tananaev@gmail.com](mailto:anton.tananaev@gmail.com))
-
-Website - [https://www.traccar.org](https://www.traccar.org)
+[![Build Status](https://travis-ci.org/traccar/traccar.svg?branch=master)](https://travis-ci.org/traccar/traccar)
 
 ## Overview
 
-Traccar is open source server for various GPS tracking devices. Project is written in Java and works on most platforms with installed Java Runtime Environment.
+Traccar is an open source GPS tracking system. This repository contains Java-based back-end service. It supports more than 170 GPS protocols and more than 1500 models of GPS tracking devices. Traccar can be used with any major SQL database system. It also provides easy to use [REST API](https://www.traccar.org/traccar-api/).
+
+Other parts of Traccar solution include:
+
+- [Traccar web app](https://github.com/traccar/traccar-web)
+- [Traccar Manager Android app](https://github.com/traccar/traccar-manager-android)
+- [Traccar Manager iOS app](https://github.com/traccar/traccar-manager-ios)
+
+There is also a set of mobile apps that you can use for tracking mobile devices:
+
+- [Traccar Client Android app](https://github.com/traccar/traccar-client-android)
+- [Traccar Client iOS app](https://github.com/traccar/traccar-client-ios)
+
+## Features
+
+Some of the available features include:
+
+- Real-time GPS tracking
+- Driver behaviour monitoring
+- Detailed and summary reports
+- Geofencing functionality
+- Alarms and notifications
+- Account and device management
+- Email and SMS support
 
 ## Build
 
-Traccar is a Maven project. You need Java SDK version 6 or higher to build the project.
+Please read [build from source documentation](https://www.traccar.org/build/) on the official website.
 
-### NetBeans (recommended)
+## Team
 
-NetBeans comes pre-packaged with Maven plugin, so you don't need to install it separately.
-
-If your NetBeans doesn't have Maven plugin, then you need to download (`Tools > Plugins`) and configure (`Tools > Options > Miscellaneous > Maven`) it.
-
-To import project select `File > Open Project`, browse to the location of the project folder and click `Open Project`. To compile the project right click on the project and select `Build`.
-
-### Eclipse
-
-Eclipse is not recommended because of the number of reported problems with Eclipse Maven plugin.
-
-### IntelliJ IDEA
-
-Follow official instructions for <a href="https://www.jetbrains.com/idea/help/importing-project-from-maven-model.html">Importing Project from Maven Model</a>.
-
-### Command Line
-
-Make sure you have Maven and JDK installed. To generate binary files execute `mvn package` command in the terminal.
-
-### Create Installer
-
-Execute `setup/package.sh` shell script in the terminal.
+- Anton Tananaev ([anton@traccar.org](mailto:anton@traccar.org))
+- Andrey Kunitsyn ([andrey@traccar.org](mailto:andrey@traccar.org))
 
 ## License
 

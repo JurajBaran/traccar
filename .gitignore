@@ -4,6 +4,10 @@ nbactions.xml
 .project
 .settings
 .idea
-web/.idea
-.idea
-traccar.iml
+*.iml
+.DS_Store
+.checkstyle
+.gradle
+out
+build
+src/main/java/org/traccar/protobuf

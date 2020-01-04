@@ -1,189 +1,199 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
-if [ $# -eq 0 ]; then
-    echo "Version number is not provided"
-    exit 0
+#
+# Script to create installers for various platforms.
+#
+
+cd $(dirname $0)
+
+usage () {
+  echo "Usage: $0 VERSION [PLATFORM]"
+  echo "Build Traccar installers."
+  echo
+  echo "Without PLATFORM provided, builds installers for all platforms."
+  echo
+  echo "Available platforms:"
+  echo " * linux-64"
+  echo " * linux-arm"
+  echo " * windows-64"
+  echo " * other"
+  exit 1
+}
+
+if [[ $# -lt 1 ]]
+then
+  usage
 fi
 
-# GENERAL REQUIREMENTS
+info () {
+  echo -e "[\033[1;34mINFO\033[0m] "$1
+}
 
-# Check wrapper
-if ls wrapper-delta-pack-*.tar.gz 1> /dev/null 2>&1; then
-    echo "Java wrapper package found"
+ok () {
+  echo -e "[\033[1;32m OK \033[0m] "$1
+}
+
+warn () {
+  echo -e "[\033[1;31mWARN\033[0m] "$1
+}
+
+VERSION=$1
+PLATFORM=${2:-all}
+export EXTJS_PATH=$(cd ../..; pwd)/ext-6.2.0
+PREREQ=true
+
+check_requirement () {
+  if ! eval $2 &>/dev/null
+  then
+	warn "$3"
+	PREREQ=false
+  else
+	ok "$@"
+  fi
+}
+
+info "Checking build requirements for platform: "$PLATFORM
+check_requirement "Traccar server archive" "ls ../target/tracker-server.jar" "Missing traccar archive"
+check_requirement "Traccar web interface" "ls ../traccar-web/tools/minify.sh" "Missing traccar-web sources"
+check_requirement "Zip" "which zip" "Missing zip binary"
+check_requirement "Unzip" "which unzip" "Missing unzip binary"
+check_requirement "Ext JS" "ls $EXTJS_PATH" "ExtJS not found in $EXTJS_PATH (https://www.sencha.com/legal/GPL/)"
+check_requirement "Sencha Cmd" "which sencha" "Missing Sencha Cmd package (https://www.sencha.com/products/extjs/cmd-download/)"
+if [ $PLATFORM != "other" ]; then
+  check_requirement "Jlink" "which jlink" "Missing jlink binary"
+fi
+if [ $PLATFORM = "all" -o $PLATFORM = "windows-64" ]; then
+  check_requirement "Inno Extractor" "which innoextract" "Missing innoextract binary"
+  check_requirement "Inno Setup" "ls innosetup-*.exe" "Missing Inno Setup (http://www.jrsoftware.org/isdl.php)"
+  check_requirement "Windows 64 Java" "ls java-*.windows.ojdkbuild.x86_64.zip" "Missing Windows 64 Java (https://github.com/ojdkbuild/ojdkbuild)"
+  check_requirement "Wine" "which wine" "Missing wine binary"
+fi
+if [ $PLATFORM = "all" -o $PLATFORM = "linux-64" -o $PLATFORM = "linux-arm" ]; then
+  check_requirement "Makeself" "which makeself" "Missing makeself binary"
+fi
+if [ $PLATFORM = "all" -o $PLATFORM = "linux-64" ]; then
+  check_requirement "Linux 64 Java" "ls jdk-*-linux-x64.zip" "Missing Linux 64 Java (https://github.com/ojdkbuild/contrib_jdk11u-ci/releases)"
+fi
+if [ $PLATFORM = "all" -o $PLATFORM = "linux-arm" ]; then
+  check_requirement "Linux ARM Java" "ls jdk-*-linux-armhf.zip" "Missing Linux ARM Java (https://github.com/ojdkbuild/contrib_jdk11u-aarch32-ci/releases)"
+fi
+if [ $PREREQ = false ]; then
+  info "Missing build requirements, aborting..."
+  exit 1
 else
-    echo "Put wrapper-delta-pack-*.tar.gz into this directory"
-    exit 0
+  info "Building..."
 fi
 
-# Check Windows x64 wrapper
-if ls wrapper-windows-x86-64-*.zip 1> /dev/null 2>&1; then
-    echo "Java wrapper package found"
-else
-    echo "Put wrapper-windows-x86-64-*.zip (from http://www.krenger.ch/blog/tag/java-service-wrapper/) into this directory"
-    exit 0
-fi
+prepare () {
+  info "Generating app.min.js"
+  ../traccar-web/tools/minify.sh >/dev/null
+  ok "Created app.min.js"
 
-# WINDOWS REQUIREMENTS
+  mkdir -p out/{conf,data,lib,logs,web,schema,templates}
 
-# Check inno setup
-if ls isetup-*.exe 1> /dev/null 2>&1; then
-    echo "Inno setup installer found"
-else
-    echo "Put isetup-*.exe into this directory"
-    exit 0
-fi
+  cp ../target/tracker-server.jar out
+  cp ../target/lib/* out/lib
+  cp ../schema/* out/schema
+  cp -r ../templates/* out/templates
+  cp -r ../traccar-web/web/* out/web
+  cp default.xml out/conf
+  cp traccar.xml out/conf
 
-# Check wine
-if which wine > /dev/null; then
-    echo "Found wine"
-else
-    echo "Install wine package"
-    exit 0
-fi
+  if [ $PLATFORM = "all" -o $PLATFORM = "windows-64" ]; then
+	innoextract innosetup-*.exe >/dev/null
+	info "If you got any errors here try Inno Setup version 5.5.5 (or check supported versions using 'innoextract -v')"
+  fi
+}
 
-# Check innoextract
-if which innoextract > /dev/null; then
-    echo "Found Innoextract"
-else
-    echo "Install innoextract package"
-    exit 0
-fi
+cleanup () {
+  info "Cleanup"
+  rm ../traccar-web/web/app.min.js
 
-# LINUX REQUIREMENTS
+  rm -r out
+  if [ $PLATFORM = "all" -o $PLATFORM = "windows-64" ]; then
+	rm -r tmp
+	rm -r app
+  fi
+}
 
-# Check makeself
-if which makeself > /dev/null; then
-    echo "Found makeself"
-else
-    echo "Install makeself package"
-    exit 0
-fi
+package_other () {
+  info "Building Zip archive"
+  cp README.txt out
+  cd out
+  zip -q -r ../traccar-other-$VERSION.zip *
+  cd ..
+  rm out/README.txt
+  ok "Created Zip archive"
+}
 
-# GENERAL PREPARATION
+package_windows () {
+  info "Building Windows 64 installer"
+  unzip -q -o java-*.windows.ojdkbuild.x86_64.zip
+  jlink --module-path java-*.windows.ojdkbuild.x86_64/jmods --add-modules java.se,jdk.charsets --output out/jre
+  rm -rf java-*.windows.ojdkbuild.x86_64
+  wine app/ISCC.exe traccar.iss >/dev/null
+  rm -rf out/jre
+  zip -q -j traccar-windows-64-$VERSION.zip Output/traccar-setup.exe README.txt
+  rm -r Output
+  ok "Created Windows 64 installer"
+}
 
-tar -xzf wrapper-delta-pack-*.tar.gz
-mv wrapper-delta-pack-*/ wrapper/
+package_linux () {
+  cp setup.sh out
+  cp traccar.service out
 
-# UNIVERSAL PACKAGE
+  unzip -q -o jdk-*-linux-$1.zip
+  jlink --module-path jdk-*-linux-$1/jmods --add-modules java.se,jdk.charsets --output out/jre
+  rm -rf jdk-*-linux-$1
+  makeself --quiet --notemp out traccar.run "traccar" ./setup.sh
+  rm -rf out/jre
 
-zip -j tracker-server-$1.zip ../target/tracker-server.jar universal/README.txt
+  zip -q -j traccar-linux-$2-$VERSION.zip traccar.run README.txt
 
-# WINDOWS PACKAGE
+  rm traccar.run
+  rm out/setup.sh
+  rm out/traccar.service
+}
 
-innoextract isetup-*.exe
-echo "NOTE: if you got any errors here try isetup version 5.5.0 (or check what versions are supported by 'innoextract -v')"
+package_linux_64 () {
+  info "Building Linux 64 installer"
+  package_linux x64 64
+  ok "Created Linux 64 installer"
+}
 
-# windows 32
+package_linux_arm () {
+  info "Building Linux ARM installer"
+  package_linux armhf arm
+  ok "Created Linux ARM installer"
+}
 
-wine app/ISCC.exe windows/traccar.iss
+prepare
 
-zip -j traccar-windows-32-$1.zip windows/Output/setup.exe windows/README.txt
+case $PLATFORM in
+  all)
+	package_linux_64
+	package_linux_arm
+	package_windows
+	package_other
+	;;
 
-rm -rf windows/Output/
-rm -rf tmp/
+  linux-64)
+	package_linux_64
+	;;
 
-# windows 64
+  linux-arm)
+	package_linux_arm
+	;;
 
-unzip wrapper-windows-x86-64-*.zip
-cp wrapper_*_src/bin/wrapper.exe wrapper/bin/wrapper-windows-x86-32.exe
-cp wrapper_*_src/lib/wrapper.dll wrapper/lib/wrapper-windows-x86-32.dll
-cp wrapper_*_src/lib/wrapper.jar wrapper/lib/wrapper.jar
-rm -rf wrapper_*_src
+  windows-64)
+	package_windows
+	;;
 
-wine app/ISCC.exe windows/traccar.iss
+  other)
+	package_other
+	;;
+esac
 
-zip -j traccar-windows-64-$1.zip windows/Output/setup.exe windows/README.txt
+cleanup
 
-rm -rf windows/Output/
-rm -rf tmp/
-
-rm -rf app/
-
-# LINIX PACKAGE
-
-app='/opt/traccar'
-
-rm -rf out
-
-mkdir out
-mkdir out/bin
-mkdir out/conf
-mkdir out/data
-mkdir out/lib
-mkdir out/logs
-mkdir out/web
-
-cp wrapper/src/bin/sh.script.in out/bin/traccar
-cp wrapper/lib/wrapper.jar out/lib
-cp wrapper/src/conf/wrapper.conf.in out/conf/wrapper.conf
-
-sed -i 's/tail -1/tail -n 1/g' out/bin/traccar
-chmod +x out/bin/traccar
-
-cp ../target/tracker-server.jar out
-cp ../target/lib/* out/lib
-cp -r ../web/* out/web
-cp linux/traccar.xml out/conf
-
-sed -i 's/@app.name@/traccar/g' out/bin/traccar
-sed -i 's/@app.long.name@/traccar/g' out/bin/traccar
-
-sed -i '/wrapper.java.classpath.1/i\wrapper.java.classpath.2=../tracker-server.jar' out/conf/wrapper.conf
-sed -i "/wrapper.app.parameter.1/i\wrapper.app.parameter.2=$app/conf/traccar.xml" out/conf/wrapper.conf
-sed -i 's/<YourMainClass>/org.traccar.Main/g' out/conf/wrapper.conf
-sed -i 's/@app.name@/traccar/g' out/conf/wrapper.conf
-sed -i 's/@app.long.name@/traccar/g' out/conf/wrapper.conf
-sed -i 's/@app.description@/traccar/g' out/conf/wrapper.conf
-sed -i 's/wrapper.logfile=..\/logs\/wrapper.log/wrapper.logfile=..\/logs\/wrapper.log.YYYYMMDD\nwrapper.logfile.rollmode=DATE/g' out/conf/wrapper.conf
-
-# linux 32
-
-cp wrapper/bin/wrapper-linux-x86-32 out/bin/wrapper
-cp wrapper/lib/libwrapper-linux-x86-32.so out/lib/libwrapper.so
-
-makeself out traccar.run "traccar" "if [ $(java -version 2>&1 | sed 's/.*version "\(.*\)\.\(.*\)\..*"/\1\2/; 1q') -lt 17 ]; then echo "Please install Java version 7 or higher"; else mkdir $app; cp -rf * $app; $app/bin/traccar install; fi"
-zip -j traccar-linux-32-$1.zip traccar.run linux/README.txt
-
-# linux 64
-
-cp wrapper/bin/wrapper-linux-x86-64 out/bin/wrapper
-cp wrapper/lib/libwrapper-linux-x86-64.so out/lib/libwrapper.so
-
-makeself out traccar.run "traccar" "if [ $(java -version 2>&1 | sed 's/.*version "\(.*\)\.\(.*\)\..*"/\1\2/; 1q') -lt 17 ]; then echo "Please install Java version 7 or higher"; else mkdir $app; cp -rf * $app; $app/bin/traccar install; fi"
-zip -j traccar-linux-64-$1.zip traccar.run linux/README.txt
-
-# linux arm
-
-rm out/bin/wrapper
-rm out/lib/libwrapper.so
-
-cp wrapper/bin/wrapper-linux-armel-32 out/bin/
-cp wrapper/bin/wrapper-linux-armhf-32 out/bin/
-cp wrapper/lib/libwrapper-linux-armel-32.so out/lib/
-cp wrapper/lib/libwrapper-linux-armhf-32.so out/lib/
-
-makeself out traccar.run "traccar" "if [ $(java -version 2>&1 | sed 's/.*version "\(.*\)\.\(.*\)\..*"/\1\2/; 1q') -lt 17 ]; then echo "Please install Java version 7 or higher"; else mkdir $app; cp -rf * $app; if [ -z "`readelf -A /proc/self/exe | grep Tag_ABI_VFP_args`" ]; then mv $app/bin/wrapper-linux-armel-32 $app/bin/wrapper; mv $app/lib/libwrapper-linux-armel-32.so $app/lib/libwrapper.so; else mv $app/bin/wrapper-linux-armhf-32 $app/bin/wrapper; mv $app/lib/libwrapper-linux-armhf-32.so $app/lib/libwrapper.so; fi; $app/bin/traccar install; fi"
-zip -j traccar-linux-arm-$1.zip traccar.run linux/README.txt
-
-# MACOSX PACKAGE
-
-rm out/conf/traccar.xml
-rm out/bin/wrapper-linux-armel-32
-rm out/bin/wrapper-linux-armhf-32
-rm out/lib/libwrapper-linux-armel-32.so
-rm out/lib/libwrapper-linux-armhf-32.so
-
-cp macosx/traccar.xml out/conf
-
-cp wrapper/bin/wrapper-macosx-universal-64 out/bin/wrapper
-cp wrapper/lib/libwrapper-macosx-universal-64.jnilib out/lib/libwrapper.jnilib
-
-makeself out traccar.run "traccar" "mkdir -p $app; cp -rf * $app; $app/bin/traccar install"
-zip -j traccar-macosx-64-$1.zip traccar.run macosx/README.txt
-
-rm traccar.run
-rm -rf out
-
-# GENERAL CLEANUP
-
-rm -rf wrapper/
+ok "Done"
