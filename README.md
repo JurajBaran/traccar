@@ -1,56 +1,61 @@
 # [Traccar](https://www.traccar.org)
-[![Build Status](https://travis-ci.org/tananaev/traccar.svg?branch=master)](https://travis-ci.org/tananaev/traccar)
-
-## Contacts
-
-Author - Anton Tananaev ([anton.tananaev@gmail.com](mailto:anton.tananaev@gmail.com))
-
-Website - [https://www.traccar.org](https://www.traccar.org)
 
 ## Overview
 
-Traccar is open source server for various GPS tracking devices. Project is written in Java and works on most platforms with installed Java Runtime Environment.
+Traccar is a free, open source GPS tracking platform. This repository contains the Java-based back-end server, which supports more than 200 GPS protocols and 2000+ models of GPS tracking devices out of the box. Traccar works with any major SQL database and provides an easy to use [REST API](https://www.traccar.org/traccar-api/).
+
+Traccar is built for anyone who needs to track vehicles, assets, or people: fleet operators, GPS tracking resellers running their own white-label platform, and individuals tracking their own devices. You can [self-host it for free](https://www.traccar.org/install-vps/), or use [official managed hosting](https://www.traccar.org/pricing/) if you'd rather not run a server yourself.
+
+| Web Dashboard |
+|---|
+| ![Traccar web dashboard](.github/screenshot.png) |
+
+Other parts of the Traccar platform:
+
+- [Traccar web app](https://github.com/traccar/traccar-web) - the browser-based tracking dashboard
+- [Traccar Manager app](https://github.com/traccar/traccar-manager) - mobile app for viewing your tracked devices
+
+There is also a set of mobile apps for tracking mobile devices themselves:
+
+- [Traccar Client app](https://github.com/traccar/traccar-client)
+
+## Quick Start
+
+Run Traccar with a production-grade MySQL database using Docker Compose:
+
+```shell
+curl -o compose.yaml https://raw.githubusercontent.com/traccar/traccar/master/docker/compose/traccar-mysql.yaml
+docker compose up -d
+```
+
+Traccar will be available on port `8082`. See the [Docker documentation](https://www.traccar.org/docker/) for other configuration options, or [try the live demo](https://www.traccar.org/demo-server/) without installing anything.
+
+## Features
+
+Some of the available features include:
+
+- Real-time GPS tracking
+- Driver behaviour monitoring
+- Detailed and summary reports
+- Geofencing functionality
+- Alarms and notifications
+- Account and device management
+- Email and SMS support
 
 ## Build
 
-Traccar is a Maven project. You need Java SDK version 6 or higher to build the project.
+Please read the [build from source documentation](https://www.traccar.org/build/) on the official website.
 
-### NetBeans (recommended)
+## Community
 
-NetBeans comes pre-packaged with Maven plugin, so you don't need to install it separately.
+- [Forums](https://www.traccar.org/forums/)
+- [Documentation](https://www.traccar.org/documentation/)
 
-If your NetBeans doesn't have Maven plugin, then you need to download (`Tools > Plugins`) and configure (`Tools > Options > Miscellaneous > Maven`) it.
+## Team
 
-To import project select `File > Open Project`, browse to the location of the project folder and click `Open Project`. To compile the project right click on the project and select `Build`.
-
-### Eclipse
-
-Eclipse is not recommended because of the number of reported problems with Eclipse Maven plugin.
-
-### IntelliJ IDEA
-
-Follow official instructions for <a href="https://www.jetbrains.com/idea/help/importing-project-from-maven-model.html">Importing Project from Maven Model</a>.
-
-### Command Line
-
-Make sure you have Maven and JDK installed. To generate binary files execute `mvn package` command in the terminal.
-
-### Create Installer
-
-Execute `setup/package.sh` shell script in the terminal.
+- Anton Tananaev ([anton@traccar.org](mailto:anton@traccar.org))
+- Andrey Kunitsyn ([andrey@traccar.org](mailto:andrey@traccar.org))
 
 ## License
 
-    Apache License, Version 2.0
-
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
-
-        http://www.apache.org/licenses/LICENSE-2.0
-
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
+Apache License, Version 2.0. See [LICENSE.txt](https://github.com/traccar/traccar/blob/master/LICENSE.txt) for details.
